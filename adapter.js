@@ -2,10 +2,9 @@
   /**
    @module ember-data
    */
-
-  var forEach = Ember.EnumerableUtils.forEach;
-//var forEach = Ember.ArrayPolyfills.forEach;
   // Why are there two of these bloody functions?
+  var forEach = Ember.ArrayPolyfills.forEach;
+  forEach = Ember.EnumerableUtils.forEach;
 
   var decamelize = Ember.String.decamelize;
   var underscore = Ember.String.underscore;
@@ -18,10 +17,37 @@
   DS.WSAdapter = DS.Adapter.extend({
     defaultSerializer: '-active-model',
 
-    find: function (store, type, id) {
-      return this.ajax(this.buildURL(type.typeKey, id), 'GET');
+    dispatcher: null,
+
+    init: function () {
+      Ember.assert('You must provide a host for DS.WSAdapter', this.host != null);
+      var dispatcher = new WebSocketRails(this.host);
+      this.set('dispatcher', dispatcher);
+      this._super();
     },
 
+    websocket: function (event, data) {
+      var _this = this;
+
+      return new Ember.RSVP.Promise(function (resolve, reject) {
+
+        _this.dispatcher.trigger(event, data,
+          function (response) {
+            Ember.run(null, resolve, response.payload);
+          },
+          function (response) {
+            Ember.run(null, reject, response);
+          });
+      }, "DS: RestAdapter#websocket " + event + " to " + this.host);
+    },
+
+    find: function (store, type, id) {
+      var event = type.typeKey + '.show';
+
+      var data = {type: 'show', id: id};
+
+      return this.websocket(event, data);
+    },
 
     findAll: function (store, type, sinceToken) {
       var query;
@@ -30,17 +56,25 @@
         query = { since: sinceToken };
       }
 
-      return this.ajax(this.buildURL(type.typeKey), 'GET', { data: query });
+      var event = type.typeKey + '.index';
+      var data = {type: 'find_all', query: query};
+      return this.websocket(event, data);
     },
 
     findQuery: function (store, type, query) {
-      return this.ajax(this.buildURL(type.typeKey), 'GET', { data: query });
+      var event = type.typeKey + '.index';
+      var data = {type: 'find_query', query: query};
+      return this.websocket(event, data);
     },
+
 
     findMany: function (store, type, ids) {
-      return this.ajax(this.buildURL(type.typeKey), 'GET', { data: { ids: ids } });
-    },
+      var event = type.typeKey + '.index';
 
+      var data = {type: 'find_many', ids: ids};
+
+      return this.websocket(event, data);
+    },
 
     findHasMany: function (store, record, url) {
       var host = get(this, 'host'),
@@ -69,7 +103,11 @@
 
       serializer.serializeIntoHash(data, type, record, { includeId: true });
 
-      return this.ajax(this.buildURL(type.typeKey), "POST", { data: data });
+      var event = type.typeKey + '.create';
+
+      var data = {type: 'create', data: data};
+
+      return this.websocket(event, data);
     },
 
 
@@ -81,16 +119,23 @@
 
       var id = get(record, 'id');
 
-      return this.ajax(this.buildURL(type.typeKey, id), "PUT", { data: data });
+      var event = type.typeKey + '.update';
+
+      var data = $.extend({}, {type: 'update', id: id}, data);
+
+      return this.websocket(event, data);
     },
 
 
     deleteRecord: function (store, type, record) {
       var id = get(record, 'id');
 
-      return this.ajax(this.buildURL(type.typeKey, id), "DELETE");
-    },
+      var event = type.typeKey + '.destroy';
 
+      var data = {type: 'destroy', id: id};
+
+      return this.websocket(event, data);
+    },
 
     buildURL: function (type, id) {
       var url = [],
