@@ -201,69 +201,8 @@
       return pluralize(underscored);
     },
 
-
-    ajaxError: function (jqXHR) {
-      var error = this._super(jqXHR);
-
-      if (jqXHR && jqXHR.status === 422) {
-        var response = Ember.$.parseJSON(jqXHR.responseText),
-          errors = {};
-
-        if (response.errors !== undefined) {
-          var jsonErrors = response.errors;
-
-          forEach(Ember.keys(jsonErrors), function (key) {
-            errors[Ember.String.camelize(key)] = jsonErrors[key];
-          });
-        }
-
-        return new DS.InvalidError(errors);
-      } else {
-        return error;
-      }
-    },
-
     ajax: function (url, type, hash) {
-      var adapter = this;
-
-      return new Ember.RSVP.Promise(function (resolve, reject) {
-        hash = adapter.ajaxOptions(url, type, hash);
-
-        hash.success = function (json) {
-          Ember.run(null, resolve, json);
-        };
-
-        hash.error = function (jqXHR, textStatus, errorThrown) {
-          Ember.run(null, reject, adapter.ajaxError(jqXHR));
-        };
-
-        Ember.$.ajax(hash);
-      }, "DS: RestAdapter#ajax " + type + " to " + url);
-    },
-
-    ajaxOptions: function (url, type, hash) {
-      hash = hash || {};
-      hash.url = url;
-      hash.type = type;
-      hash.dataType = 'json';
-      hash.context = this;
-
-      if (hash.data && type !== 'GET') {
-        hash.contentType = 'application/json; charset=utf-8';
-        hash.data = JSON.stringify(hash.data);
-      }
-
-      if (this.headers !== undefined) {
-        var headers = this.headers;
-        hash.beforeSend = function (xhr) {
-          forEach.call(Ember.keys(headers), function (key) {
-            xhr.setRequestHeader(key, headers[key]);
-          });
-        };
-      }
-
-
-      return hash;
+      console.log('Need to reimplement this with websocket()');
     }
 
   });
