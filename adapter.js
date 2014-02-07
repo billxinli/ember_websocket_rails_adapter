@@ -28,7 +28,6 @@
 
     websocket: function (event, data) {
       var _this = this;
-
       return new Ember.RSVP.Promise(function (resolve, reject) {
 
         _this.dispatcher.trigger(event, data,
@@ -36,10 +35,32 @@
             Ember.run(null, resolve, response.payload);
           },
           function (response) {
-            Ember.run(null, reject, response);
+            Ember.run(null, reject, _this.websocketError(response));
           });
       }, "DS: RestAdapter#websocket " + event + " to " + this.host);
     },
+
+
+    websocketError: function (response) {
+      var error = this._super(response);
+
+      if (response && response.status === 422) {
+        var errors = {};
+
+        if (response.errors !== undefined) {
+          var jsonErrors = response.errors;
+
+          forEach(Ember.keys(jsonErrors), function (key) {
+            errors[Ember.String.camelize(key)] = jsonErrors[key];
+          });
+        }
+
+        return new DS.InvalidError(errors);
+      } else {
+        return error;
+      }
+    },
+
 
     find: function (store, type, id) {
       var event = type.typeKey + '.show';
