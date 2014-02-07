@@ -6,10 +6,6 @@
   var forEach = Ember.ArrayPolyfills.forEach;
   forEach = Ember.EnumerableUtils.forEach;
 
-  var decamelize = Ember.String.decamelize;
-  var underscore = Ember.String.underscore;
-  var pluralize = Ember.String.pluralize;
-
   var get = Ember.get;
   var set = Ember.set;
 
@@ -40,10 +36,8 @@
       }, "DS: RestAdapter#websocket " + event + " to " + this.host);
     },
 
-
     websocketError: function (response) {
       var error = this._super(response);
-
       if (response && response.status === 422) {
         var errors = {};
 
@@ -217,9 +211,9 @@
 
 
     pathForType: function (type) {
-      var decamelized = decamelize(type);
-      var underscored = underscore(decamelized);
-      return pluralize(underscored);
+      var decamelized = Ember.String.decamelize(type);
+      var underscored = Ember.String.underscore(decamelized);
+      return Ember.String.pluralize(underscored);
     },
 
     ajax: function (url, type, hash) {
